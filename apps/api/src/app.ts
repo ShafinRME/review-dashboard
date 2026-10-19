@@ -3,6 +3,8 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { env } from "./env.js";
+import { notFound } from "./middlewares/notFound.js";
+import { errorHandler } from "./middlewares/errorHandler.js";
 
 export const app = express();
 
@@ -16,6 +18,5 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", uptime: process.uptime() });
 });
 
-app.use((_req, res) => {
-  res.status(404).json({ success: false, message: "Route not found" });
-});
+app.use(notFound);
+app.use(errorHandler);
