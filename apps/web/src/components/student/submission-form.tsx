@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,7 @@ export function SubmissionForm() {
     handleSubmit,
     setError,
     reset,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<SubmissionValues>({
     resolver: zodResolver(createSubmissionSchema),
@@ -73,7 +73,8 @@ export function SubmissionForm() {
     },
   });
 
-  const descriptionLength = (watch("description") ?? "").length;
+  const description = useWatch({ control, name: "description" });
+  const descriptionLength = (description ?? "").length;
 
   async function onSubmit(values: SubmissionValues) {
     setFormError(null);

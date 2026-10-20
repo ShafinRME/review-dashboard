@@ -12,6 +12,8 @@ import { ApiClientError } from "@/lib/api";
 // An expired or invalid session on any request sends the user back to the login page.
 function handleSessionExpiry(error: unknown) {
   if (error instanceof ApiClientError && error.status === 401) {
+    // Hard navigation on purpose: it also clears the cached data of the expired session.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/login");
   }
 }
