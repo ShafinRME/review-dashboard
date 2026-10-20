@@ -219,7 +219,11 @@ export function SubmissionsPanel() {
         </>
       )}
 
-      <ReviewDialog submission={reviewing} onClose={() => setReviewing(null)} />
+      <ReviewDialog
+        key={reviewing?.id ?? "closed"}
+        submission={reviewing}
+        onClose={() => setReviewing(null)}
+      />
 
       <p className="sr-only" aria-live="polite">
         {meta ? `${meta.total} submissions found` : ""}

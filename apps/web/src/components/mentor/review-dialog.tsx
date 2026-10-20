@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/status-badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -43,15 +43,6 @@ export function ReviewDialog({
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState<Decision | null>(null);
   const [stale, setStale] = useState(false);
-
-  // Start fresh every time a different submission is opened (or the dialog closes).
-  useEffect(() => {
-    setFeedback("");
-    setFeedbackError(null);
-    setFormError(null);
-    setPending(null);
-    setStale(false);
-  }, [submission]);
 
   async function decide(status: Decision) {
     if (!submission) return;
