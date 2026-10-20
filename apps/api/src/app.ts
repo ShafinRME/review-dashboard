@@ -7,6 +7,7 @@ import { notFound } from "./middlewares/notFound.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { submissionRouter } from "./modules/submissions/submission.routes.js";
+import { mentorRouter } from "./modules/mentor/mentor.routes.js";
 
 export const app = express();
 
@@ -22,6 +23,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/submissions", submissionRouter);
+app.use("/api/mentor", mentorRouter);
 
 app.use(notFound);
 app.use(errorHandler);
