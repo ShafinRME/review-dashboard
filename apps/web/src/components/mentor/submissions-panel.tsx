@@ -3,6 +3,7 @@
 import { ChevronLeft, ChevronRight, SearchX, Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ReviewDialog } from "@/components/mentor/review-dialog";
 import { StatusFilter } from "@/components/mentor/status-filter";
 import {
   SubmissionsTable,
@@ -20,6 +21,7 @@ import {
   toSearchString,
 } from "@/lib/list-params";
 import { cn } from "@/lib/utils";
+import type { Submission } from "@/types/api";
 
 export function SubmissionsPanel() {
   const router = useRouter();
@@ -29,6 +31,7 @@ export function SubmissionsPanel() {
   // The URL is the single source of truth for status, search and page.
   const state = parseListState(searchParams);
   const [searchInput, setSearchInput] = useState(state.search);
+  const [reviewing, setReviewing] = useState<Submission | null>(null);
   const debouncedSearch = useDebouncedValue(searchInput.trim());
 
   function update(patch: Partial<ListState>) {
@@ -170,7 +173,19 @@ export function SubmissionsPanel() {
             )}
             aria-busy={isPlaceholderData}
           >
-            <SubmissionsTable submissions={data.submissions} />
+            <SubmissionsTable
+              submissions={data.submissions}
+              actions={(s) => (
+                <Button
+                  size="sm"
+                  variant={s.status === "PENDING" ? "default" : "ghost"}
+                  onClick={() => setReviewing(s)}
+                  aria-label={`${s.status === "PENDING" ? "Review" : "View"} ${s.projectName}`}
+                >
+                  {s.status === "PENDING" ? "Review" : "View"}
+                </Button>
+              )}
+            />
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
@@ -203,6 +218,8 @@ export function SubmissionsPanel() {
           </div>
         </>
       )}
+
+      <ReviewDialog submission={reviewing} onClose={() => setReviewing(null)} />
 
       <p className="sr-only" aria-live="polite">
         {meta ? `${meta.total} submissions found` : ""}
