@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
@@ -13,7 +13,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: { default: "Review Dashboard", template: "%s | Review Dashboard" },
   description: "Students submit projects and mentors review them.",
+  openGraph: {
+    title: "Review Dashboard",
+    description: "Students submit projects and mentors review them.",
+    type: "website",
+  },
 };
+
+export const viewport: Viewport = { themeColor: "#0d1230" };
 
 export default function RootLayout({
   children,
