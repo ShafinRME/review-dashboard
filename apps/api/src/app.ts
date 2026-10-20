@@ -6,6 +6,7 @@ import { env } from "./env.js";
 import { notFound } from "./middlewares/notFound.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 import { authRouter } from "./modules/auth/auth.routes.js";
+import { submissionRouter } from "./modules/submissions/submission.routes.js";
 
 export const app = express();
 
@@ -20,6 +21,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/auth", authRouter);
+app.use("/api/submissions", submissionRouter);
 
 app.use(notFound);
 app.use(errorHandler);
