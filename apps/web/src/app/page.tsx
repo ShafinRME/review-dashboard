@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { homeFor } from "@/lib/roles";
+import { getCurrentUser } from "@/lib/server/session";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -8,7 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getCurrentUser();
+  if (user) redirect(homeFor(user.role));
   return (
     <main className="mx-auto flex min-h-screen max-w-xl items-center px-4">
       <Card className="w-full">
