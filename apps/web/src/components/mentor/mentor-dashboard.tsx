@@ -1,4 +1,7 @@
+import { Suspense } from "react";
 import { StatsOverview } from "@/components/mentor/stats-overview";
+import { SubmissionsPanel } from "@/components/mentor/submissions-panel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function MentorDashboard() {
   return (
@@ -10,6 +13,9 @@ export function MentorDashboard() {
         </p>
       </div>
       <StatsOverview />
+      <Suspense fallback={<Skeleton className="h-96 w-full rounded-xl" />}>
+        <SubmissionsPanel />
+      </Suspense>
     </div>
   );
 }
