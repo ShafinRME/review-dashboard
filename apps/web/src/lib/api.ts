@@ -101,10 +101,10 @@ export const api = {
   submissions: {
     create: async (input: CreateSubmissionInput) =>
       (
-        await request<{ submission: Submission }>("submissions", {
-          method: "POST",
-          body: json(input),
-        })
+        await request<{ submission: Submission; resubmitted: boolean }>(
+          "submissions",
+          { method: "POST", body: json(input) },
+        )
       ).data,
     listMine: async () =>
       (await request<{ submissions: Submission[] }>("submissions/mine")).data,

@@ -14,28 +14,47 @@ const submissionSelect = {
   createdAt: true,
 } as const;
 
-export async function createSubmission(
-  studentId: string,
-  input: CreateSubmissionInput,
-) {
-  const duplicate = await prisma.submission.findFirst({
+export async function createSubmission(studentId: string, input: CreateSubmissionInput) {
+  const existing = await prisma.submission.findFirst({
     where: { repoUrl: input.repoUrl },
-    select: { studentId: true },
+    select: { id: true, studentId: true, status: true },
   });
 
-  if (duplicate) {
-    throw ApiError.conflict(
-      duplicate.studentId === studentId
-        ? "You have already submitted this repository"
-        : "This repository has already been submitted",
-    );
+  if (!existing) {
+    // A concurrent duplicate hits the DB unique constraint; errorHandler maps P2002 to 409.
+    const submission = await prisma.submission.create({
+      data: { ...input, studentId },
+      select: submissionSelect,
+    });
+    return { submission, resubmitted: false };
   }
 
-  // A concurrent duplicate hits the DB unique constraint; errorHandler maps P2002 to 409.
-  return prisma.submission.create({
-    data: { ...input, studentId },
+  if (existing.studentId !== studentId) throw ApiError.conflict("This repository has already been submitted");
+  if (existing.status === "PENDING") throw ApiError.conflict("This repository is already waiting for review");
+  if (existing.status === "APPROVED") throw ApiError.conflict("This repository has already been approved");
+
+  // REJECTED: the student fixed the project and submits it again. Start a fresh review cycle.
+  // The status guard makes this atomic, so two simultaneous requests cannot both reopen it.
+  const reopened = await prisma.submission.updateMany({
+    where: { id: existing.id, studentId, status: "REJECTED" },
+    data: {
+      projectName: input.projectName,
+      liveUrl: input.liveUrl,
+      description: input.description,
+      status: "PENDING",
+      feedback: null,
+      reviewedAt: null,
+      reviewerId: null,
+      createdAt: new Date(),
+    },
+  });
+  if (reopened.count === 0) throw ApiError.conflict("This submission can no longer be resubmitted");
+
+  const submission = await prisma.submission.findUniqueOrThrow({
+    where: { id: existing.id },
     select: submissionSelect,
   });
+  return { submission, resubmitted: true };
 }
 
 export function listMySubmissions(studentId: string) {

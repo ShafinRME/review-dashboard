@@ -89,6 +89,12 @@ export function SubmissionCard({ submission }: { submission: Submission }) {
           <p className="mt-1 leading-relaxed">
             {submission.feedback ?? "No written feedback."}
           </p>
+          {submission.status === "REJECTED" && (
+            <p className="mt-2 text-xs opacity-80">
+              Fixed the issues? Submit the same repository again with updated
+              details.
+            </p>
+          )}
         </div>
       )}
     </li>

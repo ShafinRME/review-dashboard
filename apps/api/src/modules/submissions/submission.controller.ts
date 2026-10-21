@@ -3,11 +3,11 @@ import { sendSuccess } from "../../utils/response.js";
 import * as submissionService from "./submission.service.js";
 
 export const create = asyncHandler(async (_req, res) => {
-  const submission = await submissionService.createSubmission(
+  const { submission, resubmitted } = await submissionService.createSubmission(
     res.locals.auth!.sub,
     res.locals.body,
   );
-  sendSuccess(res, { submission }, 201);
+  sendSuccess(res, { submission, resubmitted }, resubmitted ? 200 : 201);
 });
 
 export const listMine = asyncHandler(async (_req, res) => {
