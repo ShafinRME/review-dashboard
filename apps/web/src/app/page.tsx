@@ -30,7 +30,11 @@ export default async function HomePage() {
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-5">
         <Brand />
         <nav aria-label="Account" className="flex items-center gap-2">
-          <Button asChild variant="ghost">
+          <Button
+            asChild
+            variant="ghost"
+            className="hidden min-[380px]:inline-flex"
+          >
             <Link href="/login">Log in</Link>
           </Button>
           <Button asChild>

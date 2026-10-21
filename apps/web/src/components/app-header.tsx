@@ -35,7 +35,9 @@ export function AppHeader() {
             <p className="font-medium">{user.name}</p>
             <p className="text-muted-foreground">{user.email}</p>
           </div>
-          <Badge variant="secondary">{user.role}</Badge>
+          <Badge variant="secondary" className="hidden min-[400px]:inline-flex">
+            {user.role}
+          </Badge>
           <Button
             variant="outline"
             size="sm"

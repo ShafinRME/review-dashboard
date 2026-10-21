@@ -19,8 +19,20 @@ export async function ProtectedShell({
 
   return (
     <AuthProvider user={user}>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground"
+      >
+        Skip to content
+      </a>
       <AppHeader />
-      <main className="mx-auto w-full max-w-6xl px-4 py-8">{children}</main>
+      <main
+        id="main"
+        tabIndex={-1}
+        className="mx-auto w-full max-w-6xl px-4 py-8 outline-none"
+      >
+        {children}
+      </main>
     </AuthProvider>
   );
 }
