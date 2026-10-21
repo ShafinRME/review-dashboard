@@ -11,6 +11,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+  ),
   title: { default: "Review Dashboard", template: "%s | Review Dashboard" },
   description: "Students submit projects and mentors review them.",
   openGraph: {

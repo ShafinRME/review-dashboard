@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
@@ -23,6 +24,9 @@ export function SubmissionsTable({
 }) {
   return (
     <Table>
+      <TableCaption className="sr-only">
+        Student submissions with their review status
+      </TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead>Project</TableHead>
