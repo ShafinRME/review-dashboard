@@ -79,8 +79,12 @@ export function SubmissionForm() {
   async function onSubmit(values: SubmissionValues) {
     setFormError(null);
     try {
-      await create.mutateAsync(values);
-      toast.success("Project submitted. A mentor will review it soon.");
+      const { resubmitted } = await create.mutateAsync(values);
+      toast.success(
+        resubmitted
+          ? "Project resubmitted. A mentor will review it again."
+          : "Project submitted. A mentor will review it soon.",
+      );
       reset();
     } catch (err) {
       if (err instanceof ApiClientError) {
