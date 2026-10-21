@@ -1,0 +1,2496 @@
+{
+  "info": {
+    "name": "Review Dashboard",
+    "description": "Full API collection for the Project Submission & Review Dashboard.\n\nUse with the 'local' environment (baseUrl, studentEmail, studentPassword, mentorEmail, mentorPassword, studentToken, mentorToken).\n\nRun order: Health > Auth > Submissions > Demo data > Resubmission > Mentor. The Mentor folder stores a pending submission id in the collection variable {{pendingId}}, so it needs the demo data first.\n\nNote: the submission rate limit counts every POST /submissions (including failed ones). Raise SUBMISSION_RATE_LIMIT_MAX in apps/api/.env while testing the full collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "pendingId",
+      "value": ""
+    },
+    {
+      "key": "resubmitRepo",
+      "value": ""
+    },
+    {
+      "key": "resubmitId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "raw": "{{baseUrl}}/health"
+            },
+            "description": "Public. Confirms the API is running."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup (student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data && json.data.token) pm.environment.set('studentToken', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ],
+              "raw": "{{baseUrl}}/auth/signup"
+            },
+            "description": "Public. Creates a STUDENT account. Role is never read from the body. 201 the first time, 409 if the email exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Two\",\n  \"email\": \"two@example.com\",\n  \"password\": \"Secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Signup - role injection ignored",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 201) pm.test('Role is STUDENT', () => pm.expect(pm.response.json().data.user.role).to.eql('STUDENT'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ],
+              "raw": "{{baseUrl}}/auth/signup"
+            },
+            "description": "Sends role=MENTOR in the body. The account must still be a STUDENT. Change the email if it already exists.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Five\",\n  \"email\": \"five@example.com\",\n  \"password\": \"Secret123\",\n  \"role\": \"MENTOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Signup - invalid input (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ],
+              "raw": "{{baseUrl}}/auth/signup"
+            },
+            "description": "Negative test. Returns field-level validation errors.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"T\",\n  \"email\": \"bad\",\n  \"password\": \"weak\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data && json.data.token) pm.environment.set('studentToken', json.data.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/auth/login"
+            },
+            "description": "Public. Saves the token to {{studentToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (mentor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200 || pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.data && json.data.token) pm.environment.set('mentorToken', json.data.token);",
+                  "}",
+                  "pm.test('Role is MENTOR', () => pm.expect(pm.response.json().data.user.role).to.eql('MENTOR'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/auth/login"
+            },
+            "description": "Public. Needs the seeded mentor. Saves the token to {{mentorToken}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{mentorEmail}}\",\n  \"password\": \"{{mentorPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - wrong password (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/auth/login"
+            },
+            "description": "Negative test. Same message as an unknown email (no user enumeration).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"Wrong123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login - unknown email (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ],
+              "raw": "{{baseUrl}}/auth/login"
+            },
+            "description": "Negative test. Must return the same message as a wrong password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nobody@example.com\",\n  \"password\": \"Secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me (student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/auth/me"
+            },
+            "description": "Any authenticated user. Returns the current user.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me (mentor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/auth/me"
+            },
+            "description": "Any authenticated user. Returns the mentor.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Me - no token (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ],
+              "raw": "{{baseUrl}}/auth/me"
+            },
+            "description": "Negative test. No Authorization header.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Submissions",
+      "item": [
+        {
+          "name": "Create submission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "STUDENT only. Creates a PENDING submission (201). Returns 409 if you already created it. Rate limited per user.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Review Dashboard\",\n  \"repoUrl\": \"https://github.com/ShafinRME/review-dashboard\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create submission - duplicate (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Same repository again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Review Dashboard\",\n  \"repoUrl\": \"https://github.com/ShafinRME/review-dashboard\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create submission - normalized duplicate (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Same repo written differently (uppercase, .git, trailing slash) is still a duplicate.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Review Dashboard\",\n  \"repoUrl\": \"https://github.com/ShafinRME/Review-Dashboard.git/\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create submission - invalid input (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Negative test. Field errors for projectName, repoUrl, liveUrl and description.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"ab\",\n  \"repoUrl\": \"https://gitlab.com/x/y\",\n  \"liveUrl\": \"http://insecure.com\",\n  \"description\": \"too short\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create submission - no token (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Negative test. No Authorization header.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Review Dashboard\",\n  \"repoUrl\": \"https://github.com/ShafinRME/review-dashboard\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create submission - mentor forbidden (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Negative test. Mentors cannot submit projects.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Review Dashboard\",\n  \"repoUrl\": \"https://github.com/ShafinRME/review-dashboard\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List my submissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns an array', () => pm.expect(pm.response.json().data.submissions).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions",
+                "mine"
+              ],
+              "raw": "{{baseUrl}}/submissions/mine"
+            },
+            "description": "STUDENT only. Returns the current student's submissions, newest first.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List my submissions - mentor forbidden (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions",
+                "mine"
+              ],
+              "raw": "{{baseUrl}}/submissions/mine"
+            },
+            "description": "Negative test. Mentors have no personal submission list.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Demo data",
+      "item": [
+        {
+          "name": "Seed: Portfolio Website",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Creates a demo submission (201, or 409 if it already exists).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Portfolio Website\",\n  \"repoUrl\": \"https://github.com/ShafinRME/portfolio-demo\",\n  \"liveUrl\": \"https://example.vercel.app\",\n  \"description\": \"A demo project submitted to test the mentor review dashboard.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Seed: Blood Book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Creates a demo submission (201, or 409 if it already exists).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Blood Book\",\n  \"repoUrl\": \"https://github.com/ShafinRME/blood-book-demo\",\n  \"liveUrl\": \"https://example.vercel.app\",\n  \"description\": \"A demo project submitted to test the mentor review dashboard.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Seed: RoboSim",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Creates a demo submission (201, or 409 if it already exists).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"RoboSim\",\n  \"repoUrl\": \"https://github.com/ShafinRME/robosim-demo\",\n  \"liveUrl\": \"https://example.vercel.app\",\n  \"description\": \"A demo project submitted to test the mentor review dashboard.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Seed: DevCollab",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is one of 201,409', () => pm.expect([201,409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Creates a demo submission (201, or 409 if it already exists).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"DevCollab\",\n  \"repoUrl\": \"https://github.com/ShafinRME/devcollab-demo\",\n  \"liveUrl\": \"https://example.vercel.app\",\n  \"description\": \"A demo project submitted to test the mentor review dashboard.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Resubmission",
+      "description": "Rejected projects can be resubmitted. Needs Login (student) and Login (mentor) first. Uses a fresh repository URL on every run.",
+      "item": [
+        {
+          "name": "1. Student submits a new project",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('resubmitId', pm.response.json().data.submission.id); }"
+                ]
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('resubmitRepo', 'https://github.com/test-user/resubmit-' + Date.now());"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Creates a PENDING submission for a fresh repository (201). Saves its id into {{resubmitId}}.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Resubmit demo\",\n  \"repoUrl\": \"{{resubmitRepo}}\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Submit again while pending (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Message mentions waiting', () => pm.expect(pm.response.json().message).to.include('waiting for review'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "The same repository cannot be submitted again while it waits for review.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Resubmit demo\",\n  \"repoUrl\": \"{{resubmitRepo}}\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "3. Mentor rejects it",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{resubmitId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{resubmitId}}/review"
+            },
+            "description": "MENTOR only. Rejects with feedback.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\",\n  \"feedback\": \"Add a README with setup steps.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Student resubmits with updated details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json().data;",
+                  "pm.test('Marked as resubmitted', () => pm.expect(d.resubmitted).to.be.true);",
+                  "pm.test('Back to PENDING', () => pm.expect(d.submission.status).to.eql('PENDING'));",
+                  "pm.test('Old feedback cleared', () => pm.expect(d.submission.feedback).to.be.null);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "Same repository, updated details. The rejected submission is reopened: 200, resubmitted true, status PENDING, feedback cleared.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Resubmit demo v2\",\n  \"repoUrl\": \"{{resubmitRepo}}\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"Now with a README, screenshots and setup steps for the project.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "5. Mentor approves the resubmission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{resubmitId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{resubmitId}}/review"
+            },
+            "description": "MENTOR only. Approves the reopened submission.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "6. Student submits again after approval (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Message mentions approved', () => pm.expect(pm.response.json().message).to.include('already been approved'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/submissions"
+            },
+            "description": "An approved repository cannot be submitted again.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"projectName\": \"Resubmit demo\",\n  \"repoUrl\": \"{{resubmitRepo}}\",\n  \"liveUrl\": \"https://review-dashboard.vercel.app\",\n  \"description\": \"A full-stack dashboard where students submit projects and mentors review them.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Mentor",
+      "item": [
+        {
+          "name": "Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has all counters', () => pm.expect(pm.response.json().data.stats).to.have.all.keys('total','pending','approved','rejected'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "stats"
+              ],
+              "raw": "{{baseUrl}}/mentor/stats"
+            },
+            "description": "MENTOR only. Aggregated counts by status.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List submissions (page 1, limit 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const meta = pm.response.json().meta;",
+                  "pm.test('Has pagination meta', () => pm.expect(meta).to.include.all.keys('page','limit','total','totalPages'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?page=1&limit=2"
+            },
+            "description": "MENTOR only. Paginated list, newest first.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List submissions (page 2, limit 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const meta = pm.response.json().meta;",
+                  "pm.test('Has pagination meta', () => pm.expect(meta).to.include.all.keys('page','limit','total','totalPages'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "2"
+                },
+                {
+                  "key": "limit",
+                  "value": "2"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?page=2&limit=2"
+            },
+            "description": "MENTOR only. Second page.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List pending - pick one (saves pendingId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().data.submissions;",
+                  "if (items.length) { pm.collectionVariables.set('pendingId', items[0].id); }",
+                  "pm.test('A pending submission exists (create demo data first)', () => pm.expect(items.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?status=PENDING&limit=1"
+            },
+            "description": "Saves the first pending submission id into {{pendingId}} for the review requests below.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is APPROVED', () => pm.expect(pm.response.json().data.submission.status).to.eql('APPROVED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{pendingId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{pendingId}}/review"
+            },
+            "description": "MENTOR only. Approves the pending submission. Feedback is optional.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"feedback\": \"Great work.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review again - already reviewed (expect 409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{pendingId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{pendingId}}/review"
+            },
+            "description": "Negative test. The same submission cannot be reviewed twice.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\",\n  \"feedback\": \"Changed my mind.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List pending - pick next (saves pendingId)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().data.submissions;",
+                  "if (items.length) { pm.collectionVariables.set('pendingId', items[0].id); }",
+                  "pm.test('A pending submission exists (create demo data first)', () => pm.expect(items.length).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
+                {
+                  "key": "limit",
+                  "value": "1"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?status=PENDING&limit=1"
+            },
+            "description": "Picks another pending submission for the reject flow.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject without feedback (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{pendingId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{pendingId}}/review"
+            },
+            "description": "Negative test. Feedback of at least 5 characters is required when rejecting.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Reject",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Is REJECTED', () => pm.expect(pm.response.json().data.submission.status).to.eql('REJECTED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{pendingId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{pendingId}}/review"
+            },
+            "description": "MENTOR only. Rejects the pending submission with feedback.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REJECTED\",\n  \"feedback\": \"Add a README and a working live link.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter: approved",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const meta = pm.response.json().meta;",
+                  "pm.test('Has pagination meta', () => pm.expect(meta).to.include.all.keys('page','limit','total','totalPages'));",
+                  "const items = pm.response.json().data.submissions;",
+                  "pm.test('All items are APPROVED', () => pm.expect(items.every(i => i.status === 'APPROVED')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "APPROVED"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?status=APPROVED"
+            },
+            "description": "Server-side filter.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter: rejected",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const meta = pm.response.json().meta;",
+                  "pm.test('Has pagination meta', () => pm.expect(meta).to.include.all.keys('page','limit','total','totalPages'));",
+                  "const items = pm.response.json().data.submissions;",
+                  "pm.test('All items are REJECTED', () => pm.expect(items.every(i => i.status === 'REJECTED')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "REJECTED"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?status=REJECTED"
+            },
+            "description": "Server-side filter.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter: pending",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const meta = pm.response.json().meta;",
+                  "pm.test('Has pagination meta', () => pm.expect(meta).to.include.all.keys('page','limit','total','totalPages'));",
+                  "const items = pm.response.json().data.submissions;",
+                  "pm.test('All items are PENDING', () => pm.expect(items.every(i => i.status === 'PENDING')).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?status=PENDING"
+            },
+            "description": "Server-side filter.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Search by project or student name",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const meta = pm.response.json().meta;",
+                  "pm.test('Has pagination meta', () => pm.expect(meta).to.include.all.keys('page','limit','total','totalPages'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "robo"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?search=robo"
+            },
+            "description": "Case-insensitive search on project name or student name.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid status filter (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DONE"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?status=DONE"
+            },
+            "description": "Negative test. Unknown status value.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid limit (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "500"
+                }
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions?limit=500"
+            },
+            "description": "Negative test. limit is capped at 50.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review unknown id (expect 404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "doesnotexist",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/doesnotexist/review"
+            },
+            "description": "Negative test. Submission not found.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Review invalid status (expect 400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions",
+                "{{pendingId}}",
+                "review"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions/{{pendingId}}/review"
+            },
+            "description": "Negative test. Status must be APPROVED or REJECTED.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PENDING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stats after reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const s = pm.response.json().data.stats;",
+                  "pm.test('Total equals the sum', () => pm.expect(s.total).to.eql(s.pending + s.approved + s.rejected));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "stats"
+              ],
+              "raw": "{{baseUrl}}/mentor/stats"
+            },
+            "description": "Counts should now include the approved and rejected submissions.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{mentorToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List submissions - student forbidden (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions"
+            },
+            "description": "Negative test. Students cannot use mentor routes.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stats - student forbidden (expect 403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "stats"
+              ],
+              "raw": "{{baseUrl}}/mentor/stats"
+            },
+            "description": "Negative test. Students cannot use mentor routes.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{studentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List submissions - no token (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "mentor",
+                "submissions"
+              ],
+              "raw": "{{baseUrl}}/mentor/submissions"
+            },
+            "description": "Negative test. No Authorization header.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
