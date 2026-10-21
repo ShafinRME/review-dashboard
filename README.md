@@ -6,12 +6,12 @@ A full-stack dashboard where students submit projects and mentors review them. B
 
 | | |
 |---|---|
-| Web app | YOUR_WEB_URL |
-| API health check | YOUR_API_URL/api/health |
+| Web app | https://review-dashboard-neon.vercel.app/ |
+| API health check | https://review-dashboard-api.onrender.com/api/health |
 
 | Role | Email | Password |
 |---|---|---|
-| Mentor | mentor@example.com | YOUR_MENTOR_PASSWORD |
+| Mentor | mentor@example.com | mentorPH@2026 |
 | Student | Sign up on the site, or use the demo button on the login page | |
 
 The login page has one-click "Fill demo" buttons when demo accounts are configured. The free hosting tiers sleep when idle, so the first request after a pause can take a few seconds.
