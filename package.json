@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "dev:api": "pnpm --filter api dev",
+    "test": "pnpm --filter api test",
     "dev:web": "pnpm --filter web dev"
   }
 }
