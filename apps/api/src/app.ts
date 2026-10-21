@@ -11,6 +11,9 @@ import { mentorRouter } from "./modules/mentor/mentor.routes.js";
 
 export const app = express();
 
+// Render runs behind one reverse proxy; trust it so client IPs and protocol are read correctly.
+app.set("trust proxy", 1);
+
 app.disable("x-powered-by");
 app.use(helmet());
 app.use(cors({ origin: env.CORS_ORIGIN.split(","), credentials: true }));
